@@ -28,7 +28,7 @@ docker pull registry.gitlab.com/sharkops/docker-images/k8s-cli-tools:latest
 ```yaml
 build:
   stage: build
-  image: registry.gitlab.com/sharkops/docker-images/k8s-cli-tools
+  image: registry.gitlab.com/sharkops/docker-images/k8s-cli-tools:latest
   script:
     - kubectl get nodes
 ```
