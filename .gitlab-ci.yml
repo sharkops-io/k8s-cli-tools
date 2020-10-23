@@ -1,0 +1,26 @@
+variables:
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
+  REGISTRY_URL: $CI_REGISTRY
+  REGISTRY_USER: $CI_REGISTRY_USER
+  REGISTRY_PASSWORD: $CI_REGISTRY_PASSWORD
+
+.build_prep:
+  image: kaniko-project/executor:debug
+  stage: build
+  before_script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$REGISTRY\":{\"username\":\"$REGISTRY_USER\",\"password\":\"$REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+
+build_release:
+  extends: .build_prep
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $IMAGE_NAME:$CI_COMMIT_TAG --destination $IMAGE_NAME:latest
+
+build:
+  extends: .build_prep
+  except:
+    - tags
+  script:
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $IMAGE_NAME:$CI_COMMIT_REF_NAME --destination $IMAGE_NAME:$CI_COMMIT_SHORT_SHA
