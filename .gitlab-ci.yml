@@ -5,7 +5,9 @@ variables:
   REGISTRY_PASSWORD: $CI_REGISTRY_PASSWORD
 
 .build_prep:
-  image: gcr.io/kaniko-project/executor:debug
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
   stage: build
   before_script:
     - mkdir -p /kaniko/.docker
