@@ -9,5 +9,26 @@ This image simply pulls specified versions of `helm` `kubectl` and `Rancher CLI`
 - `rancher`
 - `bash`
 - `curl`
+- `wget`
 - `ca-certificates`
 - `git`
+
+## Using the Image
+
+This image is mostly intended to be used in CI/CD Pipelines, such as GitLab CI/CD.
+
+### Locally, Using docker
+
+```bash
+docker pull registry.gitlab.com/sharkops/docker-images/k8s-cli-tools:latest
+```
+
+### In a Stage on GitLab CI/CD
+
+```yaml
+build:
+  stage: build
+  image: registry.gitlab.com/sharkops/docker-images/k8s-cli-tools
+  script:
+    - kubectl get nodes
+```
