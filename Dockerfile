@@ -1,8 +1,7 @@
-ARG KUBECTL_VERSION=1.33.4
 ARG HELM_VERSION=3.19.0
 ARG RANCHER_CLI_VERSION=v2.12.1
 
-FROM bitnami/kubectl:${KUBECTL_VERSION} as kubectl
+FROM bitnami/kubectl:latest as kubectl
 FROM alpine/helm:${HELM_VERSION} as helm
 FROM rancher/cli2:${RANCHER_CLI_VERSION} as rancher
 
