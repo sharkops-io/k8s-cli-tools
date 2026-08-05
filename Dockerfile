@@ -1,5 +1,5 @@
 ARG HELM_VERSION=3.21.3
-ARG RANCHER_CLI_VERSION=v2.14.0
+ARG RANCHER_CLI_VERSION=v2.15.0
 
 FROM bitnami/kubectl:latest AS kubectl
 FROM ghcr.io/helmfile/helmfile:latest AS helmfile
