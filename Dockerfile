@@ -1,4 +1,4 @@
-ARG HELM_VERSION=3.21.4
+ARG HELM_VERSION=4.2.4
 ARG RANCHER_CLI_VERSION=v2.15.1
 # helmfile shells out to kustomize for strategicMergePatches/jsonPatches;
 # without it the render fails with "kustomize: executable file not found in
@@ -49,6 +49,26 @@ RUN set -eu; \
       | tar -xz -C /usr/bin kustomize && \
     kustomize version
 
-RUN /usr/bin/helm plugin install https://github.com/databus23/helm-diff
+# *** `--verify=false` IS REQUIRED BY HELM 4, AND IT IS A REAL TRADE-OFF. ***
+#
+# Helm 4 verifies plugin provenance by default. helm-diff does not publish
+# provenance artefacts, so the plain install fails outright:
+#
+#   Error: plugin source does not support verification.
+#   Use --verify=false to skip verification
+#
+# That is not cosmetic -- it breaks the BUILD, so this image (which deploys the
+# whole cluster via `helmfile apply`) cannot be produced at all on Helm 4 without
+# this flag. helm-diff's own README documents the same workaround.
+#
+# What the flag costs: Helm 4 added plugin verification deliberately, and this
+# turns it off for this plugin. We are choosing to install an unverified plugin
+# from GitHub at build time -- which is exactly what Helm 3 always did, so this
+# is not a REGRESSION against today, but it does decline a new protection rather
+# than adopt it. Revisit when helm-diff ships provenance; then drop the flag.
+#
+# Under Helm 4 the plugin loads through the legacy subprocess handler and
+# reports as `cli/v1 legacy`. That path is supported, not deprecated-and-broken.
+RUN /usr/bin/helm plugin install --verify=false https://github.com/databus23/helm-diff
 
 LABEL maintaner="dewdew@gmail.com Andrew Landsverk"
