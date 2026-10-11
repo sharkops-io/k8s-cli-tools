@@ -1,5 +1,5 @@
 ARG HELM_VERSION=4.2.4
-ARG RANCHER_CLI_VERSION=v2.15.1
+ARG RANCHER_CLI_VERSION=v2.15.2
 # helmfile shells out to kustomize for strategicMergePatches/jsonPatches;
 # without it the render fails with "kustomize: executable file not found in
 # $PATH" -- and under `helmfile --quiet` that error is swallowed, leaving
