@@ -1,9 +1,3 @@
-# kubectl comes from the official image, pinned. bitnami/kubectl was :latest
-# only (Bitnami's free tier stopped publishing versioned tags in 2025), so this
-# image shipped whatever kubectl was newest -- v1.37.1 at 3.1.0, a minor ahead
-# of the cluster. Keep this within one minor of the cluster; Renovate proposes
-# bumps but sharkops MRs merge by hand, so hold a minor until the cluster has it.
-# The official image is distroless and multi-arch: the binary is /bin/kubectl.
 ARG KUBECTL_VERSION=v1.36.6
 ARG HELM_VERSION=4.3.1
 ARG RANCHER_CLI_VERSION=v2.15.3
