@@ -1,4 +1,4 @@
-ARG KUBECTL_VERSION=v1.36.6
+ARG KUBECTL_VERSION=v1.37.2
 ARG HELM_VERSION=4.3.1
 # rancher/cli2 is published amd64-ONLY (a plain manifest, not a list; checked
 # 2026-11-10), so a COPY --from it would put an amd64 binary into the arm64
