@@ -1,5 +1,11 @@
 ARG KUBECTL_VERSION=v1.36.6
 ARG HELM_VERSION=4.3.1
+# rancher/cli2 is published amd64-ONLY (a plain manifest, not a list; checked
+# 2026-11-10), so a COPY --from it would put an amd64 binary into the arm64
+# image. The binary comes from the GitHub release tarball for the build's arch
+# instead, the same way kustomize does. The comment below keeps Renovate on it
+# (customManagers:dockerfileVersions in example-org/renovate).
+# renovate: datasource=github-releases depName=rancher/cli
 ARG RANCHER_CLI_VERSION=v2.15.3
 # helmfile shells out to kustomize for strategicMergePatches/jsonPatches;
 # without it the render fails with "kustomize: executable file not found in
@@ -13,7 +19,6 @@ ARG KUSTOMIZE_VERSION=5.8.1
 FROM registry.k8s.io/kubectl:${KUBECTL_VERSION} AS kubectl
 FROM ghcr.io/helmfile/helmfile:latest AS helmfile
 FROM alpine/helm:${HELM_VERSION} AS helm
-FROM rancher/cli2:${RANCHER_CLI_VERSION} AS rancher
 
 FROM alpine
 
@@ -23,9 +28,9 @@ RUN apk add --update --no-cache curl ca-certificates bash git wget && \
 COPY --from=kubectl /bin/kubectl /usr/bin/kubectl
 COPY --from=helm /usr/bin/helm /usr/bin/helm
 COPY --from=helmfile /usr/local/bin/helmfile /usr/bin/helmfile
-COPY --from=rancher /usr/bin/rancher /usr/bin/rancher
 
 ARG KUSTOMIZE_VERSION
+ARG RANCHER_CLI_VERSION
 # *** DERIVE THE ARCH, DO NOT USE TARGETOS/TARGETARCH HERE. ***
 #
 # Those are BUILDKIT automatic build args. This repo builds with KANIKO
@@ -48,7 +53,13 @@ RUN set -eu; \
     curl -fsSL \
       "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_${ARCH}.tar.gz" \
       | tar -xz -C /usr/bin kustomize && \
-    kustomize version
+    kustomize version && \
+    curl -fsSL \
+      "https://github.com/rancher/cli/releases/download/${RANCHER_CLI_VERSION}/rancher-linux-${ARCH}-${RANCHER_CLI_VERSION}.tar.gz" \
+      | tar -xz -C /tmp && \
+    mv "/tmp/rancher-${RANCHER_CLI_VERSION}/rancher" /usr/bin/rancher && \
+    rm -rf "/tmp/rancher-${RANCHER_CLI_VERSION}" && \
+    rancher --version
 
 # *** `--verify=false` IS REQUIRED BY HELM 4, AND IT IS A REAL TRADE-OFF. ***
 #

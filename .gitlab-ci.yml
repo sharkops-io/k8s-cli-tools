@@ -1,9 +1,108 @@
+# Multi-arch: linux/amd64 + linux/arm64, published as ONE manifest-list tag.
+#
+# Kaniko cannot build for a foreign arch or push a manifest list, so each arch
+# builds NATIVELY on GitLab's hosted runner of that arch (no QEMU, no
+# self-hosted runner - sharkops must not get one, see example-org cicd docs)
+# and pushes <tag>-<arch>. crane then stitches the two into a manifest list.
+#
+# Pipeline: build (x2) -> manifest -> smoke (x2, runs the built image on each
+# arch) -> promote. :latest / the branch slug move ONLY after both arches
+# passed the smoke test, so a broken arm64 build can never become :latest,
+# which every deploy pipeline in the cluster runs.
+#
+# This repo no longer uses gitlab-ci-common-config's docker/build.yml (single
+# arch); it still includes that repo's workflow so it keeps one pipeline per
+# change. Tag scheme kept: a git tag publishes :<tag> and :latest; every other
+# pipeline publishes :<short sha> and :<branch slug>.
 include:
   - project: 'sharkops/gitlab-ci-common-config'
-    file: 'docker/build.yml'
+    file: 'workflow/merge-request-pipelines.yml'
 
 variables:
   IMAGE_NAME: $CI_REGISTRY_IMAGE
   REGISTRY_URL: $CI_REGISTRY
   REGISTRY_USER: $CI_REGISTRY_USER
   REGISTRY_PASSWORD: $CI_REGISTRY_PASSWORD
+
+stages:
+  - build
+  - manifest
+  - smoke
+  - promote
+
+# IMAGE_TAG: the release tag on a tag pipeline, the short SHA otherwise. Every
+# job extends this so all four stages agree on it.
+.image_tag:
+  rules:
+    - if: $CI_COMMIT_TAG
+      variables:
+        IMAGE_TAG: $CI_COMMIT_TAG
+    - when: on_success
+      variables:
+        IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+
+.per_arch:
+  parallel:
+    matrix:
+      - ARCH: [amd64, arm64]
+  tags:
+    - saas-linux-small-${ARCH}
+
+.crane:
+  image:
+    name: gcr.io/go-containerregistry/crane:debug
+    entrypoint: [""]
+  before_script:
+    - crane auth login "$REGISTRY_URL" -u "$REGISTRY_USER" -p "$REGISTRY_PASSWORD"
+
+build:
+  extends: [.image_tag, .per_arch]
+  stage: build
+  # Same safety net as the shared template: a hung job bills until killed.
+  timeout: 15m
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$REGISTRY_URL\":{\"username\":\"$REGISTRY_USER\",\"password\":\"$REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination "$IMAGE_NAME:$IMAGE_TAG-$ARCH"
+
+manifest:
+  extends: [.image_tag, .crane]
+  stage: manifest
+  timeout: 5m
+  script:
+    # --docker-empty-base: kaniko pushes Docker v2 manifests, so the list is a
+    # Docker manifest list rather than an OCI index with Docker children.
+    - crane index append --docker-empty-base -m "$IMAGE_NAME:$IMAGE_TAG-amd64" -m "$IMAGE_NAME:$IMAGE_TAG-arm64" -t "$IMAGE_NAME:$IMAGE_TAG"
+    - crane manifest "$IMAGE_NAME:$IMAGE_TAG"
+
+# Runs the multi-arch tag itself on each arch, so this also proves the runner
+# resolved the list to the right platform. Every tool the deploy pipelines use.
+smoke:
+  extends: [.image_tag, .per_arch]
+  stage: smoke
+  timeout: 5m
+  image: $IMAGE_NAME:$IMAGE_TAG
+  script:
+    - test "$(uname -m)" = "$( [ "$ARCH" = amd64 ] && echo x86_64 || echo aarch64 )"
+    - kubectl version --client
+    - helm version
+    - helm plugin list | grep -q '^diff'
+    - helmfile --version
+    - kustomize version
+    - rancher --version
+    - git --version
+
+promote:
+  extends: [.image_tag, .crane]
+  stage: promote
+  timeout: 5m
+  script:
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        crane tag "$IMAGE_NAME:$IMAGE_TAG" latest
+      else
+        crane tag "$IMAGE_NAME:$IMAGE_TAG" "$CI_COMMIT_REF_SLUG"
+      fi

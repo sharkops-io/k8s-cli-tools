@@ -2,10 +2,14 @@
 
 This image simply pulls specified versions of `helm` `kubectl` and `Rancher CLI` from their Docker images. This image is based on `alpine`
 
+Published for **linux/amd64 and linux/arm64** as one multi-arch tag, so `docker pull` on an Apple Silicon Mac or an arm64 runner gets a native image. See `.gitlab-ci.yml` for how.
+
 ## Installed CLI tools
 
 - `kubectl`
-- `helm`
+- `helm` (with the `helm-diff` plugin)
+- `helmfile`
+- `kustomize`
 - `rancher`
 - `bash`
 - `curl`
