@@ -46,6 +46,13 @@ deploy:
   script:
     - kubectl version --client
 ```
+## Runner variant
+
+`Dockerfile.runner` builds the GitHub Actions runner (`ghcr.io/actions/actions-runner`)
+with this image's kubectl, helm, helm-diff, helmfile and kustomize copied in.
+It is published as `ghcr.io/sharkops-io/k8s-cli-tools:<tag>-runner`
+(and `:latest-runner` / `:master-runner`) for self-hosted ARC runner scale sets.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).

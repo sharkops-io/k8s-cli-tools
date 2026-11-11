@@ -1,0 +1,22 @@
+# The GitHub Actions runner (ARC scale sets in the cluster) with this repo's
+# deploy tools. Same binaries as the main image, copied from it, so a deploy on
+# GitHub runs the exact kubectl/helm/helm-diff/helmfile/kustomize that the GitLab
+# deploy jobs run today.
+#
+# Why not run the main image as a job container: it is Alpine (musl), and
+# JavaScript actions such as actions/checkout need glibc. The runner image is
+# Ubuntu. Every copied binary is static Go, so it runs on either.
+#
+# No RUN steps: a copy-only target stage builds for any platform without QEMU.
+ARG TOOLS_IMAGE=ghcr.io/sharkops-io/k8s-cli-tools:latest
+# renovate: datasource=docker depName=ghcr.io/actions/actions-runner
+ARG RUNNER_VERSION=2.338.2
+
+FROM ${TOOLS_IMAGE} AS tools
+
+FROM ghcr.io/actions/actions-runner:${RUNNER_VERSION}
+COPY --from=tools /usr/bin/kubectl /usr/bin/helm /usr/bin/helmfile /usr/bin/kustomize /usr/local/bin/
+# helm-diff, which `helmfile apply` needs. The runner's HOME is /home/runner, not
+# /root, so point Helm at a system-wide plugin dir instead of a home dir.
+COPY --from=tools /root/.local/share/helm/plugins /usr/local/share/helm/plugins
+ENV HELM_PLUGINS=/usr/local/share/helm/plugins

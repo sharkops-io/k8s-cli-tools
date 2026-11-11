@@ -117,3 +117,64 @@ jobs:
           if [ "$REF_TYPE" = tag ]; then promote=latest; else promote="$BRANCH"; fi
           docker buildx imagetools create -t "$IMAGE:$promote" "$IMAGE:$TAG"
           docker buildx imagetools inspect "$IMAGE:$promote"
+
+  # The ARC runner variant (Dockerfile.runner): the GitHub Actions runner plus
+  # the exact binaries of the multi-arch tag built above. Published as
+  # :<tag>-runner and promoted to :<promote>-runner alongside the main image.
+  # A PR builds it against :latest without pushing.
+  runner-image:
+    needs: [build, manifest]
+    if: always() && needs.build.result == 'success' && (needs.manifest.result == 'success' || github.event_name == 'pull_request')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tags
+        id: t
+        env:
+          TAG: ${{ needs.build.outputs.tag }}
+          REF_TYPE: ${{ github.ref_type }}
+          BRANCH: ${{ github.ref_name }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            echo "tools=$IMAGE:latest" >> "$GITHUB_OUTPUT"
+            echo "tags=$IMAGE:pr-runner" >> "$GITHUB_OUTPUT"
+          else
+            if [ "$REF_TYPE" = tag ]; then promote=latest; else promote="$BRANCH"; fi
+            echo "tools=$IMAGE:$TAG" >> "$GITHUB_OUTPUT"
+            printf 'tags<<EOF\n%s\n%s\nEOF\n' "$IMAGE:$TAG-runner" "$IMAGE:$promote-runner" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.runner
+          platforms: linux/amd64,linux/arm64
+          build-args: TOOLS_IMAGE=${{ steps.t.outputs.tools }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.t.outputs.tags }}
+      - name: Smoke test (amd64)
+        env:
+          TOOLS: ${{ steps.t.outputs.tools }}
+        run: |
+          docker buildx build --platform linux/amd64 -f Dockerfile.runner --build-arg TOOLS_IMAGE="$TOOLS" -t runner-smoke --load .
+          docker run --rm runner-smoke bash -ec '
+            test "$(id -un)" = runner
+            kubectl version --client
+            helm plugin list | grep -q "^diff"
+            helmfile --version
+            kustomize version
+            git --version
+            test -x /home/runner/run.sh'
