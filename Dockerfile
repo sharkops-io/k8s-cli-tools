@@ -1,3 +1,10 @@
+# kubectl comes from the official image, pinned. bitnami/kubectl was :latest
+# only (Bitnami's free tier stopped publishing versioned tags in 2025), so this
+# image shipped whatever kubectl was newest -- v1.37.1 at 3.1.0, a minor ahead
+# of the cluster. Keep this within one minor of the cluster; Renovate proposes
+# bumps but sharkops MRs merge by hand, so hold a minor until the cluster has it.
+# The official image is distroless and multi-arch: the binary is /bin/kubectl.
+ARG KUBECTL_VERSION=v1.36.6
 ARG HELM_VERSION=4.3.1
 ARG RANCHER_CLI_VERSION=v2.15.3
 # helmfile shells out to kustomize for strategicMergePatches/jsonPatches;
@@ -9,7 +16,7 @@ ARG RANCHER_CLI_VERSION=v2.15.3
 # because that image is published amd64-only and would break an arm64 build.
 ARG KUSTOMIZE_VERSION=5.8.1
 
-FROM bitnami/kubectl:latest AS kubectl
+FROM registry.k8s.io/kubectl:${KUBECTL_VERSION} AS kubectl
 FROM ghcr.io/helmfile/helmfile:latest AS helmfile
 FROM alpine/helm:${HELM_VERSION} AS helm
 FROM rancher/cli2:${RANCHER_CLI_VERSION} AS rancher
@@ -19,7 +26,7 @@ FROM alpine
 RUN apk add --update --no-cache curl ca-certificates bash git wget && \
     rm -f /var/cache/apk/*
 
-COPY --from=kubectl /opt/bitnami/kubectl/bin/kubectl /usr/bin/kubectl
+COPY --from=kubectl /bin/kubectl /usr/bin/kubectl
 COPY --from=helm /usr/bin/helm /usr/bin/helm
 COPY --from=helmfile /usr/local/bin/helmfile /usr/bin/helmfile
 COPY --from=rancher /usr/bin/rancher /usr/bin/rancher
