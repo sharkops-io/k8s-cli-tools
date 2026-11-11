@@ -1,8 +1,8 @@
 # k8s-cli-tools
 
-This image simply pulls specified versions of `helm` `kubectl` and `Rancher CLI` from their Docker images. This image is based on `alpine`
+A small Alpine image with pinned versions of the Kubernetes deploy tools, built for CI jobs that run `kubectl`, `helm` and `helmfile`.
 
-Published for **linux/amd64 and linux/arm64** as one multi-arch tag, so `docker pull` on an Apple Silicon Mac or an arm64 runner gets a native image. See `.gitlab-ci.yml` for how.
+Published for **linux/amd64 and linux/arm64** as one multi-arch tag, so `docker pull` on an Apple Silicon Mac or an arm64 runner gets a native image. Each architecture is built on a native runner and smoke-tested before the multi-arch tag exists; see `.github/workflows/ci.yml`.
 
 ## Installed CLI tools
 
@@ -19,20 +19,33 @@ Published for **linux/amd64 and linux/arm64** as one multi-arch tag, so `docker 
 
 ## Using the Image
 
-This image is mostly intended to be used in CI/CD Pipelines, such as GitLab CI/CD. You can find the latest version in the [GitLab Container Registry](https://gitlab.com/sharkops/docker-images/k8s-cli-tools/container_registry) or in the [Releases Section](https://gitlab.com/sharkops/docker-images/k8s-cli-tools/-/releases)
+It is meant for CI pipelines. Versions are on [GHCR](https://github.com/sharkops-io/k8s-cli-tools/pkgs/container/k8s-cli-tools): each `X.Y.Z` release tag, `latest` for the newest release, and `master` for the newest build of the default branch.
 
 ### Locally, Using docker
 
 ```bash
-docker pull registry.gitlab.com/sharkops/docker-images/k8s-cli-tools:latest
+docker pull ghcr.io/sharkops-io/k8s-cli-tools:latest
 ```
 
-### In a Stage on GitLab CI/CD
+### In a GitHub Actions job
 
 ```yaml
-build:
-  stage: build
-  image: registry.gitlab.com/sharkops/docker-images/k8s-cli-tools:latest
-  script:
-    - kubectl get nodes
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    container: ghcr.io/sharkops-io/k8s-cli-tools:latest
+    steps:
+      - run: kubectl version --client
 ```
+
+### In a GitLab CI job
+
+```yaml
+deploy:
+  image: ghcr.io/sharkops-io/k8s-cli-tools:latest
+  script:
+    - kubectl version --client
+```
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).
