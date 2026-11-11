@@ -1,3 +1,4 @@
+ARG KUBECTL_VERSION=v1.36.6
 ARG HELM_VERSION=4.3.1
 ARG RANCHER_CLI_VERSION=v2.15.3
 # helmfile shells out to kustomize for strategicMergePatches/jsonPatches;
@@ -9,7 +10,7 @@ ARG RANCHER_CLI_VERSION=v2.15.3
 # because that image is published amd64-only and would break an arm64 build.
 ARG KUSTOMIZE_VERSION=5.8.1
 
-FROM bitnami/kubectl:latest AS kubectl
+FROM registry.k8s.io/kubectl:${KUBECTL_VERSION} AS kubectl
 FROM ghcr.io/helmfile/helmfile:latest AS helmfile
 FROM alpine/helm:${HELM_VERSION} AS helm
 FROM rancher/cli2:${RANCHER_CLI_VERSION} AS rancher
@@ -19,7 +20,7 @@ FROM alpine
 RUN apk add --update --no-cache curl ca-certificates bash git wget && \
     rm -f /var/cache/apk/*
 
-COPY --from=kubectl /opt/bitnami/kubectl/bin/kubectl /usr/bin/kubectl
+COPY --from=kubectl /bin/kubectl /usr/bin/kubectl
 COPY --from=helm /usr/bin/helm /usr/bin/helm
 COPY --from=helmfile /usr/local/bin/helmfile /usr/bin/helmfile
 COPY --from=rancher /usr/bin/rancher /usr/bin/rancher
