@@ -4,7 +4,7 @@ ARG HELM_VERSION=4.3.1
 # 2026-11-10), so a COPY --from it would put an amd64 binary into the arm64
 # image. The binary comes from the GitHub release tarball for the build's arch
 # instead, the same way kustomize does. The comment below keeps Renovate on it
-# (customManagers:dockerfileVersions in example-org/renovate).
+# (the Renovate config's dockerfileVersions custom manager).
 # renovate: datasource=github-releases depName=rancher/cli
 ARG RANCHER_CLI_VERSION=v2.15.3
 # helmfile shells out to kustomize for strategicMergePatches/jsonPatches;
@@ -83,4 +83,4 @@ RUN set -eu; \
 # reports as `cli/v1 legacy`. That path is supported, not deprecated-and-broken.
 RUN /usr/bin/helm plugin install --verify=false https://github.com/databus23/helm-diff
 
-LABEL maintaner="dewdew@gmail.com Andrew Landsverk"
+LABEL org.opencontainers.image.authors="sharkops-io"
