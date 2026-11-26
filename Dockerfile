@@ -6,7 +6,7 @@ ARG HELM_VERSION=4.3.2
 # instead, the same way kustomize does. The comment below keeps Renovate on it
 # (the Renovate config's dockerfileVersions custom manager).
 # renovate: datasource=github-releases depName=rancher/cli
-ARG RANCHER_CLI_VERSION=v2.15.3
+ARG RANCHER_CLI_VERSION=v2.15.4
 # helmfile shells out to kustomize for strategicMergePatches/jsonPatches;
 # without it the render fails with "kustomize: executable file not found in
 # $PATH" -- and under `helmfile --quiet` that error is swallowed, leaving
